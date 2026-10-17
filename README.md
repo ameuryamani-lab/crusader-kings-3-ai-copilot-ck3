@@ -1,18 +1,28 @@
-# CK3 Copilot
+# Crusader Kings 3 (CK3) AI Voice Copilot
 
-A voice copilot for **Crusader Kings III** on Windows. A small microphone icon floats over the game: ask your question out loud, and the copilot looks at your screen by itself, then answers in text and out loud, quoting the game's buttons exactly as they appear on screen.
+**Stuck in Crusader Kings III? Ask out loud.** A free AI voice assistant for CK3 on Windows: it looks at your game screen, then tells you in a few words what to do and where to click.
 
-No more taking photos of your screen with your phone to ask an AI for help.
+### [⬇ Download CK3-Copilot.zip (Windows 10/11)](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/releases/latest/download/CK3-Copilot.zip)
 
-<img src="docs/copilot-in-game-en.png" width="1100" alt="The CK3 Copilot answer panel next to the Tips window in Crusader Kings III">
+*Free and open source (GPL-3.0). English and French. Every version is on the [Releases page](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/releases).*
 
-*A real answer from the copilot for this screen. New to this? The **[step-by-step guide](TUTORIAL.md)** explains everything, with pictures.*
+<img src="docs/copilot-in-game-en.png" width="1100" alt="Crusader Kings 3 AI copilot: the answer panel next to the Tips window in CK3, telling the player where to click">
 
-> **Beta.** This is a personal project, version 0.1, still in beta. It is provided as is, without any warranty. Found a bug or have an idea? You are welcome to share it in [Issues](https://github.com/ameuryamani-lab/copilote-ck3/issues).
+*A real answer from the copilot for this CK3 screen.*
+
+**Install in 3 steps** (full [step-by-step guide](TUTORIAL.md) with pictures):
+
+1. **Download** [CK3-Copilot.zip](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/releases/latest/download/CK3-Copilot.zip), right-click it > **Extract All...** into a folder of your own, for example `%USERPROFILE%\CK3-Copilot`.
+2. In the `ck3-copilot` folder, double-click **`Installer-Copilote-CK3.cmd`**: it installs the app and asks for your [Google Gemini key](https://aistudio.google.com/apikey).
+3. Start Crusader Kings 3, then the **CK3 Copilot** shortcut on your desktop. Press **Ctrl+Shift+Space** and ask your question.
+
+It is not a mod: it does not touch your game files and never clicks for you. It is a small overlay that watches the CK3 window and advises, like a friend who knows the game sitting next to you. Useful for beginners learning the game (claims, wars, schemes, lifestyles, succession, faith) and for veterans who forgot where a button is.
+
+> **Beta.** This is a personal project, version 0.1, still in beta. It is provided as is, without any warranty. Found a bug or have an idea? You are welcome to share it in [Issues](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/issues).
 
 > **Language:** the copilot answers in **English or French**, your choice in the tray icon menu (**Langue / Language**). By default it follows your Windows language. Button names are always quoted in English, exactly as in the game. The code comments are in French.
 >
-> *Version française plus bas.*
+> **En français :** un copilote vocal gratuit pour Crusader Kings 3 (CK3) : tu poses ta question à voix haute, il regarde ton écran et te dit où cliquer. Réponses en français ou en anglais. [Télécharger CK3-Copilot.zip](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/releases/latest/download/CK3-Copilot.zip) · [Version française complète](#version-française).
 
 ## What it does
 
@@ -42,19 +52,19 @@ You need:
 
 Steps:
 
-1. Download this folder: green **Code** button, then **Download ZIP**. Right-click the ZIP > **Extract All...**, into a folder of your own user folder, for example `%USERPROFILE%\CK3-Copilot`: Windows creates a `copilote-ck3-main` folder there, the copilot's folder. Not in a folder shared by every account of the PC (such as `C:\Games`): `.env`, the file that holds your key, would be readable by the other Windows accounts. Not under `Program Files` either: the installation fails there without administrator rights.
-2. In the `copilote-ck3-main` folder, double-click **`Installer-Copilote-CK3.cmd`** (Windows may show it as `Installer-Copilote-CK3`, not the file named just `installer`). It checks Node.js (and offers to open nodejs.org if it is missing), installs Electron, the app's engine (about 150 MB), asks for your Gemini key (kept in `.env`, on your PC only) and creates a **CK3 Copilot** shortcut on the desktop. You can run it again at any time: it only does what is missing.
+1. Download **[CK3-Copilot.zip](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/releases/latest/download/CK3-Copilot.zip)** (latest release). Right-click the ZIP > **Extract All...**, into a folder of your own user folder, for example `%USERPROFILE%\CK3-Copilot`: Windows creates a `ck3-copilot` folder there, the copilot's folder. Not in a folder shared by every account of the PC (such as `C:\Games`): `.env`, the file that holds your key, would be readable by the other Windows accounts. Not under `Program Files` either: the installation fails there without administrator rights.
+2. In the `ck3-copilot` folder, double-click **`Installer-Copilote-CK3.cmd`** (Windows may show it as `Installer-Copilote-CK3`, not the file named just `installer`). It checks Node.js (and offers to open nodejs.org if it is missing), installs Electron, the app's engine (about 150 MB), asks for your Gemini key (kept in `.env`, on your PC only) and creates a **CK3 Copilot** shortcut on the desktop. You can run it again at any time: it only does what is missing.
 3. Start CK3, then double-click **CK3 Copilot** on the desktop (or `Lancer-Copilote-CK3.cmd`). The microphone icon appears on the right of the screen.
 
 The **[step-by-step guide](TUTORIAL.md)** walks through each step with pictures, and has a troubleshooting section (icon not visible, microphone blocked, antivirus warning...).
 
-What is downloaded, and from where: the ZIP itself comes from GitHub over HTTPS (it changes with every commit, so there is no fixed checksum to compare it with). The installer then downloads from two places only: the packages listed in `package-lock.json` from registry.npmjs.org, each checked by npm against the integrity fingerprint recorded in that file, and Electron from the official releases on github.com (electron/electron), checked by Electron's own `install.js` against the SHA-256 sums shipped in the `electron` package. Nothing comes from the author's own servers, and nodejs.org is only ever opened in your browser.
+What is downloaded, and from where: the ZIP itself comes from GitHub over HTTPS (each release file has its SHA-256 shown on the Releases page). The installer then downloads from two places only: the packages listed in `package-lock.json` from registry.npmjs.org, each checked by npm against the integrity fingerprint recorded in that file, and Electron from the official releases on github.com (electron/electron), checked by Electron's own `install.js` against the SHA-256 sums shipped in the `electron` package. Nothing comes from the author's own servers, and nodejs.org is only ever opened in your browser.
 
 Manual install, for developers (Node.js 22.12 or newer):
 
 ```
-git clone https://github.com/ameuryamani-lab/copilote-ck3
-cd copilote-ck3
+git clone https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3
+cd crusader-kings-3-ai-copilot-ck3
 npm ci
 node node_modules\electron\install.js
 copy .env.example .env
@@ -110,13 +120,13 @@ Every question is logged with its cost in `journal/copilote-ck3/`.
 
 Un copilote vocal pour Crusader Kings III, sous Windows. Une petite icône micro reste au-dessus du jeu : tu poses ta question à voix haute, il regarde lui-même ton écran et te répond à l'écrit et à voix haute, avec les noms exacts des boutons du jeu (en anglais, comme à l'écran). Il ne touche jamais au jeu : il conseille seulement.
 
-- **Bêta :** c'est un projet personnel, version 0.1, encore en bêta. Il est fourni tel quel, sans aucune garantie. Un bug ou une idée ? Tu peux les signaler dans l'onglet [Issues](https://github.com/ameuryamani-lab/copilote-ck3/issues).
+- **Bêta :** c'est un projet personnel, version 0.1, encore en bêta. Il est fourni tel quel, sans aucune garantie. Un bug ou une idée ? Tu peux les signaler dans l'onglet [Issues](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/issues).
 - **Il te faut :** Windows 10 ou 11, CK3 sur Steam **avec le jeu réglé en anglais** (dans le jeu : **Paramètres**, rubrique **Langue**, English), Node.js 22.12 ou plus récent (seulement pour installer : l'installation te guide s'il manque) et une clé Google Gemini. Essayé avec CK3 1.20 en mode « Fullscreen » à 1920 × 1080, sur un seul écran.
 - **Langue des réponses :** français ou anglais, au choix dans le menu de l'icône (« Langue / Language ») ; par défaut, la langue de Windows. Les noms des boutons restent en anglais, comme dans le jeu.
 - **Utilisation :** Ctrl+Maj+Espace ou clic sur l'icône (garder les touches enfoncées pour parler comme avec un talkie-walkie).
 - **S'il reste bloqué** sur le jeu : clic droit sur l'icône ou le panneau pour **Replier / Recharger / Quitter**, ou **Ctrl+Maj+Retour arrière** pour le remettre à zéro ; **deux fois** en moins de 2 secondes pour le fermer, même s'il est figé. Le jeu ne reçoit pas ces touches.
 - **Il regarde pendant toute ta question :** de l'appui jusqu'à la fin de ta phrase, il garde un œil sur la fenêtre de CK3 (un coup d'œil léger environ une fois par seconde) et envoie jusqu'à 4 vues avec ta question. Tu peux donc dire « regarde ça » en survolant quelque chose. Astuce : arrête la souris une demi-seconde sur ce que tu veux lui montrer, le temps que l'info-bulle du jeu s'ouvre.
-- **Installation :** télécharge le ZIP (bouton vert **Code**, puis **Download ZIP**) et extrais-le dans un dossier de ton propre dossier utilisateur, par exemple `%USERPROFILE%\CK3-Copilot` : Windows y crée le dossier du copilote, `copilote-ck3-main`. Pas dans un dossier commun à tous les comptes du PC (comme `C:\Jeux`) : `.env`, le fichier qui contient ta clé, y serait lisible par les autres comptes Windows ; pas sous `Program Files` non plus : l'installation y échoue sans droits d'administrateur. Ce qui est téléchargé, et d'où : le ZIP vient de GitHub en HTTPS ; l'installation ne télécharge ensuite que depuis registry.npmjs.org (paquets de `package-lock.json`, empreintes d'intégrité vérifiées) et github.com (Electron, sommes SHA-256 vérifiées), jamais depuis les serveurs de l'auteur. Dans ce dossier, double-clique sur **`Installer-Copilote-CK3.cmd`** : il vérifie Node.js, installe Electron (environ 150 Mo), te demande ta clé Google Gemini et crée un raccourci **CK3 Copilot** sur le Bureau. Lance ensuite CK3, puis le raccourci. Tout est expliqué pas à pas, avec des images, dans le **[guide](TUTORIAL.md#version-française)**. Installation à la main pour les développeurs : les commandes de la partie anglaise.
+- **Installation :** télécharge **[CK3-Copilot.zip](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/releases/latest/download/CK3-Copilot.zip)** et extrais-le dans un dossier de ton propre dossier utilisateur, par exemple `%USERPROFILE%\CK3-Copilot` : Windows y crée le dossier du copilote, `ck3-copilot`. Pas dans un dossier commun à tous les comptes du PC (comme `C:\Jeux`) : `.env`, le fichier qui contient ta clé, y serait lisible par les autres comptes Windows ; pas sous `Program Files` non plus : l'installation y échoue sans droits d'administrateur. Ce qui est téléchargé, et d'où : le ZIP vient de GitHub en HTTPS ; l'installation ne télécharge ensuite que depuis registry.npmjs.org (paquets de `package-lock.json`, empreintes d'intégrité vérifiées) et github.com (Electron, sommes SHA-256 vérifiées), jamais depuis les serveurs de l'auteur. Dans ce dossier, double-clique sur **`Installer-Copilote-CK3.cmd`** : il vérifie Node.js, installe Electron (environ 150 Mo), te demande ta clé Google Gemini et crée un raccourci **CK3 Copilot** sur le Bureau. Lance ensuite CK3, puis le raccourci. Tout est expliqué pas à pas, avec des images, dans le **[guide](TUTORIAL.md#version-française)**. Installation à la main pour les développeurs : les commandes de la partie anglaise.
 - **Coût :** environ 1 cent par question jusqu'à fin 2026, près de 2 cents à partir du 1er janvier 2027 (Google double alors ses prix).
 - **Vie privée :** seule la fenêtre de CK3 est capturée, et seulement pendant une question. Partent chez Google (ou chez OpenAI en secours) : l'enregistrement de ta question, jusqu'à 4 vues de cette fenêtre avec des zooms autour de la souris (plus la position du curseur et la taille de la fenêtre), la version du jeu et la liste de tes extensions, les extraits de l'Encyclopédie du jeu qui correspondent à ta question, les 4 derniers échanges des 10 dernières minutes et, si tu l'as réglé, ton prénom ; Google peut aussi faire des recherches Google pour répondre, et le texte de la réponse repart pour être lu à voix haute. Liste complète dans le [guide](TUTORIAL.md#10-vie-privée). Ta clé reste sur ton PC.
 - **Offre gratuite de Google :** la facturation est conseillée. Avec l'offre gratuite, ce que tu envoies peut servir à améliorer les produits de Google, et la recherche Google, que le copilote utilise à chaque réponse, n'est pas disponible : il peut ne pas répondre du tout (pas essayé ; voir le guide).

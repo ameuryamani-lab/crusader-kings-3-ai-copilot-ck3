@@ -1,4 +1,4 @@
-# CK3 Copilot: step-by-step guide
+# Crusader Kings 3 (CK3) AI Copilot: step-by-step guide
 
 This guide is for players, not developers. You will not need to type any command: you download a folder, double-click an installer, paste a key, and play.
 
@@ -40,16 +40,16 @@ On the paid tier, Google does not use your prompts or answers to improve its pro
 
 ## 3. Download the copilot
 
-1. On the [copilot's GitHub page](https://github.com/ameuryamani-lab/copilote-ck3), click the green **Code** button, then **Download ZIP**.
-2. Open your Downloads folder, **right-click** the ZIP file (`copilote-ck3-main.zip`), then **Extract All...**.
+1. Download **[CK3-Copilot.zip](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/releases/latest/download/CK3-Copilot.zip)**, the latest version (also listed on the [Releases page](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/releases)).
+2. Open your Downloads folder, **right-click** the ZIP file (`CK3-Copilot.zip`), then **Extract All...**.
 3. Choose a folder you will keep, inside your own user folder: for example `%USERPROFILE%\CK3-Copilot` (type it in the box, or click **Browse...**; to see your user folder, type `%USERPROFILE%` in the address bar of File Explorer), then click **Extract**. Why there: the copilot's folder will hold `.env`, the file with your key, and a folder shared by every account of the PC (such as `C:\Games`) would let the other Windows accounts read it. Avoid `Program Files` (the installation fails there without administrator rights, and the installer refuses it), the Downloads folder (easy to clean up by mistake) and folders synced by OneDrive (the copilot takes about 400 MB).
-4. Windows puts a folder named **`copilote-ck3-main`** in the folder you chose, for example `%USERPROFILE%\CK3-Copilot\copilote-ck3-main`. **This is the copilot's folder:** everything this guide calls "the copilot's folder" is there.
+4. Windows puts a folder named **`ck3-copilot`** in the folder you chose, for example `%USERPROFILE%\CK3-Copilot\ck3-copilot`. **This is the copilot's folder:** everything this guide calls "the copilot's folder" is there.
 
 Do not run anything from inside the ZIP: always extract it first.
 
 ## 4. Run the installer
 
-Open the copilot's folder (`copilote-ck3-main`) and **double-click `Installer-Copilote-CK3.cmd`**. A black window opens; every message is shown in English, then in French.
+Open the copilot's folder (`ck3-copilot`) and **double-click `Installer-Copilote-CK3.cmd`**. A black window opens; every message is shown in English, then in French.
 
 > **Two files are called "installer".** Windows often hides the end of file names (`.cmd`, `.ps1`), so you may see `Installer-Copilote-CK3` (type "Windows Command Script") next to a file named just `installer`. Double-click **`Installer-Copilote-CK3`**. If Notepad (or a window asking which app to use) opens instead, you opened `installer`: close it and double-click the other one.
 
@@ -75,7 +75,7 @@ This is roughly what you should see. It is shortened: in the real window, each l
 
 ```
 CK3 Copilot - installation
-Folder / Dossier : <your user folder>\CK3-Copilot\copilote-ck3-main
+Folder / Dossier : <your user folder>\CK3-Copilot\ck3-copilot
 
 [1/5] Checking Windows and this folder
 Windows 11 (build 26200), 64-bit: OK.
@@ -266,18 +266,18 @@ The copilot's small Windows helper, `aide-windows.ps1` (the PowerShell that capt
 Right-click the copilot's icon next to the clock > **Langue / Language**.
 
 **A wrong answer?**
-The copilot is in beta and can make mistakes. You can report it in the [Issues](https://github.com/ameuryamani-lab/copilote-ck3/issues) tab, with the question you asked.
+The copilot is in beta and can make mistakes. You can report it in the [Issues](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/issues) tab, with the question you asked.
 
 ## 12. Update
 
 1. Quit the copilot (right-click its icon next to the clock > **Quit**).
-2. Download the new ZIP and extract it **to the same place as the first time** (for example `%USERPROFILE%\CK3-Copilot`), so that it lands in the same `copilote-ck3-main` folder. When Windows asks, choose **Replace the files in the destination**. Your `.env`, settings and logs are not in the ZIP, so they are kept.
+2. Download the new ZIP and extract it **to the same place as the first time** (for example `%USERPROFILE%\CK3-Copilot`), so that it lands in the same `ck3-copilot` folder. When Windows asks, choose **Replace the files in the destination**. Your `.env`, settings and logs are not in the ZIP, so they are kept.
 3. Double-click `Installer-Copilote-CK3.cmd` again: it updates Electron if needed.
 
 ## 13. Uninstall
 
 1. Quit the copilot (right-click its icon next to the clock > **Quit**).
-2. Delete the copilot's folder (`copilote-ck3-main`). This also deletes your key, settings and logs.
+2. Delete the copilot's folder (`ck3-copilot`). This also deletes your key, settings and logs.
 3. Delete the **CK3 Copilot** shortcut from your desktop.
 4. Optional: delete the folders `%APPDATA%\copilote-ck3` (Electron's data for the copilot) and `%LOCALAPPDATA%\electron\Cache` (the Electron download, about 150 MB; other Electron-based programs you install yourself may use it too). Type these names in the File Explorer address bar to open them.
 5. Optional: uninstall Node.js (**Settings > Apps**) if you don't use it for anything else, and delete your key in Google AI Studio if you won't use it anymore.
@@ -324,16 +324,16 @@ Avec l'offre payante, Google n'utilise ni tes demandes ni les réponses pour am�
 
 ### 3. Télécharger le copilote
 
-1. Sur la [page GitHub du copilote](https://github.com/ameuryamani-lab/copilote-ck3), clique sur le bouton vert **Code**, puis sur **Download ZIP**.
-2. Ouvre ton dossier Téléchargements, fais un **clic droit** sur le fichier ZIP (`copilote-ck3-main.zip`), puis **Extraire tout...**.
+1. Télécharge **[CK3-Copilot.zip](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/releases/latest/download/CK3-Copilot.zip)**, la dernière version (aussi sur la [page des versions](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/releases)).
+2. Ouvre ton dossier Téléchargements, fais un **clic droit** sur le fichier ZIP (`CK3-Copilot.zip`), puis **Extraire tout...**.
 3. Choisis un dossier que tu garderas, dans ton propre dossier utilisateur : par exemple `%USERPROFILE%\CK3-Copilot` (tape-le dans la case, ou clique sur **Parcourir...** ; pour voir ton dossier utilisateur, tape `%USERPROFILE%` dans la barre d'adresse de l'Explorateur de fichiers), puis clique sur **Extraire**. Pourquoi là : le dossier du copilote contiendra `.env`, le fichier avec ta clé, et un dossier commun à tous les comptes du PC (comme `C:\Jeux`) laisserait les autres comptes Windows le lire. Évite `Program Files` (l'installation y échoue sans droits d'administrateur, et l'installation le refuse), le dossier Téléchargements (facile à vider par erreur) et les dossiers synchronisés par OneDrive (le copilote prend environ 400 Mo).
-4. Windows met un dossier nommé **`copilote-ck3-main`** dans le dossier choisi, par exemple `%USERPROFILE%\CK3-Copilot\copilote-ck3-main`. **C'est le dossier du copilote :** tout ce que ce guide appelle « le dossier du copilote » est là.
+4. Windows met un dossier nommé **`ck3-copilot`** dans le dossier choisi, par exemple `%USERPROFILE%\CK3-Copilot\ck3-copilot`. **C'est le dossier du copilote :** tout ce que ce guide appelle « le dossier du copilote » est là.
 
 Ne lance rien depuis l'intérieur du ZIP : extrais-le toujours d'abord.
 
 ### 4. Lancer l'installation
 
-Ouvre le dossier du copilote (`copilote-ck3-main`) et **double-clique sur `Installer-Copilote-CK3.cmd`**. Une fenêtre noire s'ouvre ; chaque message est écrit en anglais, puis en français.
+Ouvre le dossier du copilote (`ck3-copilot`) et **double-clique sur `Installer-Copilote-CK3.cmd`**. Une fenêtre noire s'ouvre ; chaque message est écrit en anglais, puis en français.
 
 > **Deux fichiers s'appellent « installer ».** Windows cache souvent la fin des noms de fichiers (`.cmd`, `.ps1`) : tu peux voir `Installer-Copilote-CK3` (type « Script de commande Windows ») à côté d'un fichier nommé seulement `installer`. Double-clique sur **`Installer-Copilote-CK3`**. Si le Bloc-notes (ou une fenêtre qui demande avec quelle appli ouvrir le fichier) s'ouvre, tu as ouvert `installer` : ferme-le et double-clique sur l'autre.
 
@@ -359,7 +359,7 @@ Voici à peu près ce que tu dois voir. C'est raccourci : dans la vraie fenêtre
 
 ```
 Copilote CK3 - installation
-Folder / Dossier : <your user folder>\CK3-Copilot\copilote-ck3-main
+Folder / Dossier : <your user folder>\CK3-Copilot\ck3-copilot
 
 [1/5] Vérification de Windows et de ce dossier
 Windows 11 (build 26200), 64 bits : OK.
@@ -550,18 +550,18 @@ La petite aide Windows du copilote, `aide-windows.ps1` (le PowerShell qui captur
 Clic droit sur l'icône du copilote près de l'horloge > **Langue / Language**.
 
 **Une réponse fausse ?**
-Le copilote est en bêta et peut se tromper. Tu peux le signaler dans l'onglet [Issues](https://github.com/ameuryamani-lab/copilote-ck3/issues), avec la question que tu as posée.
+Le copilote est en bêta et peut se tromper. Tu peux le signaler dans l'onglet [Issues](https://github.com/ameuryamani-lab/crusader-kings-3-ai-copilot-ck3/issues), avec la question que tu as posée.
 
 ### 12. Mettre à jour
 
 1. Quitte le copilote (clic droit sur son icône près de l'horloge > **Quitter**).
-2. Télécharge le nouveau ZIP et extrais-le **au même endroit que la première fois** (par exemple `%USERPROFILE%\CK3-Copilot`), pour qu'il arrive dans le même dossier `copilote-ck3-main`. Quand Windows le demande, choisis **Remplacer les fichiers dans la destination**. Ton `.env`, tes réglages et tes journaux ne sont pas dans le ZIP : ils sont gardés.
+2. Télécharge le nouveau ZIP et extrais-le **au même endroit que la première fois** (par exemple `%USERPROFILE%\CK3-Copilot`), pour qu'il arrive dans le même dossier `ck3-copilot`. Quand Windows le demande, choisis **Remplacer les fichiers dans la destination**. Ton `.env`, tes réglages et tes journaux ne sont pas dans le ZIP : ils sont gardés.
 3. Double-clique de nouveau sur `Installer-Copilote-CK3.cmd` : il met Electron à jour si besoin.
 
 ### 13. Désinstaller
 
 1. Quitte le copilote (clic droit sur son icône près de l'horloge > **Quitter**).
-2. Supprime le dossier du copilote (`copilote-ck3-main`). Cela supprime aussi ta clé, tes réglages et tes journaux.
+2. Supprime le dossier du copilote (`ck3-copilot`). Cela supprime aussi ta clé, tes réglages et tes journaux.
 3. Supprime le raccourci **CK3 Copilot** de ton Bureau.
 4. Facultatif : supprime les dossiers `%APPDATA%\copilote-ck3` (les données d'Electron pour le copilote) et `%LOCALAPPDATA%\electron\Cache` (le téléchargement d'Electron, environ 150 Mo ; d'autres programmes basés sur Electron que tu installes toi-même peuvent s'en servir aussi). Tape ces noms dans la barre d'adresse de l'Explorateur de fichiers pour les ouvrir.
 5. Facultatif : désinstalle Node.js (**Paramètres > Applications**) si tu ne t'en sers pas pour autre chose, et supprime ta clé dans Google AI Studio si tu ne l'utilises plus.
