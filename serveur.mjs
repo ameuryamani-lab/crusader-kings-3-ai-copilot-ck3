@@ -70,7 +70,7 @@ function copiloteIndisponible(raison) {
         res.end(`data: ${JSON.stringify({type: 'erreur', message})}\n\n`);
         return true;
       }
-      if (url.pathname === '/api/jeu/etat') return json(res, 200, {ck3: false, version: null, extensions: {possedees: [], manquantes: []}, cle: {gemini: false, openai: false}, voix: null, erreur: message}), true;
+      if (url.pathname === '/api/jeu/etat') return json(res, 200, {ck3: false, version: null, extensions: {possedees: [], manquantes: []}, cle: {gemini: false}, voix: null, erreur: message}), true;
       return json(res, 503, {erreur: message}), true;
     },
     async *poser({langue} = {}) { yield {type: 'erreur', message: messages[langue === 'en' ? 'en' : 'fr']}; },
@@ -131,7 +131,7 @@ export function creerCopiloteFactice({delai = 40} = {}) {
   async function route(url, req, res) {
     if (!url.pathname.startsWith('/api/jeu/')) return false;
     if (url.pathname === '/api/jeu/etat' && req.method === 'GET') return json(res, 200, {ck3: true, version: '1.20.0.4', factice: true,
-      extensions: {possedees: ['Garments of the Holy Roman Empire'], manquantes: ['By God Alone']}, cle: {gemini: true, openai: true}, voix: 'Kore'}), true;
+      extensions: {possedees: ['Garments of the Holy Roman Empire'], manquantes: ['By God Alone']}, cle: {gemini: true}, voix: 'Kore'}), true;
     if (url.pathname === '/api/jeu/oublier' && req.method === 'POST') { req.resume(); echanges = 0; return json(res, 200, {ok: true}), true; }
     if (url.pathname === '/api/jeu/capturer' && req.method === 'POST') { req.resume(); return json(res, 200, {ok: true, factice: true}), true; }
     if (url.pathname === '/api/jeu/regard/arret' && req.method === 'POST') { req.resume(); return json(res, 200, {ok: true, arrete: false, factice: true}), true; }
@@ -156,7 +156,7 @@ export function creerCopiloteFactice({delai = 40} = {}) {
 // copilote : facultatif, pour les essais (sinon le vrai cerveau est construit depuis agent/copilote-jeu.mjs).
 export async function demarrerServeur({root, port = 8802, aide = null, journal = console, copilote = null}) {
   const env = await lireEnv(root);
-  journal.log?.(`Clés présentes : Gemini ${env.GEMINI_API_KEY ? 'oui' : 'non'}, OpenAI ${env.OPENAI_API_KEY ? 'oui' : 'non'}`);
+  journal.log?.(`Clé Gemini présente : ${env.GEMINI_API_KEY ? 'oui' : 'non'}`);
   if (!copilote && process.env.COPILOTE_ESSAI_STUB === '1') { copilote = creerCopiloteFactice(); journal.log?.('Cerveau factice (COPILOTE_ESSAI_STUB=1)'); }
   if (!copilote) {
     try {

@@ -239,7 +239,7 @@ try {
   if (-not (Test-Path -LiteralPath $fichierEnv)) {
     $exemple = Join-Path $App '.env.example'
     if (Test-Path -LiteralPath $exemple) { Copy-Item -LiteralPath $exemple -Destination $fichierEnv }
-    else { [IO.File]::WriteAllText($fichierEnv, "GEMINI_API_KEY=`r`nOPENAI_API_KEY=`r`n", $Utf8) }
+    else { [IO.File]::WriteAllText($fichierEnv, "GEMINI_API_KEY=`r`n", $Utf8) }
     Info '.env created (your settings file, it stays on this PC).' '.env créé (ton fichier de réglages, il reste sur ce PC).'
   }
   $aCle = [bool](Lire-Cle $fichierEnv)

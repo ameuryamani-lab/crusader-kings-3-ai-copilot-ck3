@@ -1,11 +1,11 @@
 // Essai du cerveau du copilote CK3 (agent/copilote-jeu.mjs + agent/copilote-ck3-savoir.mjs), sans Electron ni aide Windows.
-// Aucune vraie capture : une fausse aide renvoie l'image synthétique ck3-test.jpg. Coût réel : quelques cents (Gemini, un appel OpenAI).
-// Usage : node essai-cerveau.mjs [savoir,a,b,suite,annulation,silence,erreurs,secours,regard,google,regard-reel] [--image=chemin.jpg] [--regenerer]
+// Aucune vraie capture : une fausse aide renvoie l'image synthétique ck3-test.jpg. Coût réel : quelques cents (Gemini).
+// Usage : node essai-cerveau.mjs [savoir,a,b,suite,annulation,silence,erreurs,regard,google,regard-reel] [--image=chemin.jpg] [--regenerer]
 //         [--question="…"] [--langue=en] [--sans-voix]
-// (savoir, erreurs, regard et google ne coûtent rien ; secours fait UN appel OpenAI ; les autres appellent Gemini.)
+// (savoir, erreurs, regard et google ne coûtent rien ; les autres appellent Gemini.)
 // google (10/10/2026, test ECC) : erreurs Google classées (429 limite retenté, quota du jour, modèle inconnu, clé refusée y compris
-// pendant l'écoute vocale, 503 retenté, crédit, 429 de la voix coupé par la garde du premier son) avec un faux Google et un faux
-// OpenAI, Encyclopédie introuvable dite une fois, état de l'aide Windows en panne.
+// pendant l'écoute vocale, 503 retenté, crédit, 429 de la voix coupé par la garde du premier son) avec un faux Google,
+// Encyclopédie introuvable dite une fois, état de l'aide Windows en panne.
 // regard (07/10/2026) : le regard pendant la question, avec une fausse aide qui joue des scènes (info-bulle qui apparaît, écran
 // immobile, CK3 quitté, CK3 fermé, souris immobile avant l'appui, impressions lentes, son muet, capture de l'appui ratée) et un
 // faux Google qui garde la requête envoyée : images choisies, libellés, résolutions, annulation, vues d'un appui précédent jamais
@@ -30,7 +30,7 @@ const QUESTION_PARLEE = 'Le bouton pour déclarer la guerre est grisé. Comment 
 const LANGUE = arg('langue') === 'en' ? 'en' : 'fr';
 const VOIX = !process.argv.includes('--sans-voix');
 const QUESTION_ECRITE = arg('question') || (LANGUE === 'en' ? 'Why can\'t I declare war on Guilhem of Toulouse?' : 'Pourquoi je ne peux pas déclarer la guerre à Guilhem de Toulouse ?');   // --question="…" pour une autre
-const ETAPES = (process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'savoir,a,b,suite,annulation,silence,erreurs,secours,regard,google').split(',');
+const ETAPES = (process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'savoir,a,b,suite,annulation,silence,erreurs,regard,google').split(',');
 
 // Langue d'une réponse, à la louche : mots outils français contre anglais, hors libellés en gras (anglais dans les deux langues).
 function langueDe(texte) {
@@ -50,7 +50,7 @@ for (const ligne of (await readFile(path.join(ROOT, '.env'), 'utf8')).split(/\r?
   const m = ligne.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
   if (m) env[m[1]] = m[2].replace(/^(['"])(.*)\1$/, '$2');
 }
-console.log('Clés présentes :', {gemini: !!env.GEMINI_API_KEY, openai: !!env.OPENAI_API_KEY});
+console.log('Clés présentes :', {gemini: !!env.GEMINI_API_KEY});
 
 const existe = f => access(f).then(() => true, () => false);
 const wav16 = (pcm, taux = 16000) => {
@@ -136,7 +136,7 @@ const derniereLigneJournal = async () => {
   const f = path.join(ROOT, 'journal', 'copilote-ck3', `questions-${new Intl.DateTimeFormat('fr-CA').format(new Date()).slice(0, 7)}.jsonl`);
   const l = (await readFile(f, 'utf8')).trim().split('\n').pop();
   const j = JSON.parse(l);
-  console.log('Journal :', JSON.stringify({modeles: j.modeles, jetons: j.jetons, durees: j.durees, recherches: j.recherches, extraits: j.extraits?.length, coutCents: j.coutCents, secours: j.secours, erreur: j.erreur}));
+  console.log('Journal :', JSON.stringify({modeles: j.modeles, jetons: j.jetons, durees: j.durees, recherches: j.recherches, extraits: j.extraits?.length, coutCents: j.coutCents, erreur: j.erreur}));
   return j;
 };
 
@@ -227,13 +227,6 @@ if (ETAPES.includes('erreurs')) {
   console.log('POST /api/jeu/question (SSE) ->', r.status, r.headers.get('content-type'), JSON.stringify(await r.text()));
   console.log('GET /api/autre ->', await copilote.route(new URL('http://127.0.0.1/api/autre'), {}, {}));
   serveur.close();
-}
-
-if (ETAPES.includes('secours')) {
-  // Panne forcée de Google (modèle inexistant) : UN appel OpenAI (gpt-6-luna + recherche web), sans voix.
-  const copilote = creerCopiloteJeu({root: ROOT, env, aide: fausseAide(), modeles: {reponse: 'gemini-modele-inexistant'}});
-  const r = await poser(copilote, 'secours OpenAI (Gemini en panne forcée)', {texte: QUESTION_ECRITE, voix: false});
-  total += r.fin?.coutCents || 0; await derniereLigneJournal();
 }
 
 // Racine temporaire pour le regard : le journal des questions et la capture de dépannage n'y touchent pas ceux d'Ameur ; l'index de
@@ -497,8 +490,9 @@ if (ETAPES.includes('regard')) {
 
 if (ETAPES.includes('google')) {
   // Erreurs Google classées et retentées (10/10/2026, test ECC : tout 429 passait pour « crédit épuisé », une clé refusée pour
-  // « Google ne répond pas », aucune nouvelle tentative). Faux Google (scénario par cas) et faux OpenAI : aucun appel payant.
-  console.log('\n=== Erreurs Google classées (faux Google, faux OpenAI : aucun appel payant) ===');
+  // « Google ne répond pas », aucune nouvelle tentative). Faux Google (scénario par cas) : aucun appel payant. Depuis le 23/10, plus
+  // de repli : la cause classée est dite au joueur (événement « erreur »).
+  console.log('\n=== Erreurs Google classées (faux Google : aucun appel payant) ===');
   const racine = await racineTemporaire();
   const resultats = [];
   const verifier = (nom, ok, details = '') => { resultats.push(ok); console.log(`${ok ? 'OK   ' : 'ÉCHEC'} ${nom}${details ? ' : ' + details : ''}`); };
@@ -508,24 +502,16 @@ if (ETAPES.includes('google')) {
   let scenario = () => { throw new Error('scénario absent'); }, appels = [];
   const sse = texte => new Response(`data: ${JSON.stringify({candidates: [{content: {parts: [{text: texte}]}, finishReason: 'STOP'}], usageMetadata: {promptTokenCount: 10, candidatesTokenCount: 3}})}\n\n`, {status: 200, headers: {'Content-Type': 'text/event-stream'}});
   const refus = (code, status, message, details = []) => new Response(JSON.stringify({error: {code, status, message, details}}), {status: code, headers: {'Content-Type': 'application/json'}});
-  const sseOpenAI = `data: ${JSON.stringify({type: 'response.output_text.delta', delta: 'Réponse OpenAI.'})}\n\ndata: ${JSON.stringify({type: 'response.completed', response: {usage: {input_tokens: 10, output_tokens: 3}}})}\n\n`;
   globalThis.fetch = async (url, options = {}) => {
     const u = String(url);
-    if (u.startsWith('https://api.openai.com/')) {
-      appels.push('openai');
-      if (u.endsWith('/audio/transcriptions')) return Response.json({text: 'Question de secours'});
-      if (u.endsWith('/responses')) return new Response(sseOpenAI, {status: 200, headers: {'Content-Type': 'text/event-stream'}});
-      if (u.endsWith('/audio/speech')) return new Response(Buffer.alloc(9600));   // 200 ms de PCM muet (voix de secours)
-      throw new Error(`appel OpenAI inattendu : ${u}`);
-    }
     if (!u.startsWith('https://generativelanguage.googleapis.com/')) throw new Error(`appel inattendu pendant l'essai : ${u}`);
     appels.push('google');
     return scenario(appels.filter(a => a === 'google').length, u, options);
   };
-  const cles = {GEMINI_API_KEY: 'cle-factice', OPENAI_API_KEY: 'cle-factice'};
+  const cles = {GEMINI_API_KEY: 'cle-factice'};
   const copilote = (env = cles, aide = fausseAide()) => creerCopiloteJeu({root: racine, env, aide, journal: journalEspion});
   const question = async (c, options = {}) => { appels = []; lignes.length = 0; const ev = []; for await (const e of c.poser({texte: 'Comment je crée un duché ?', voix: false, ...options})) ev.push(e); return ev; };
-  const secoursDe = ev => ev.find(e => e.type === 'etape' && e.secours)?.texte || null;
+  const erreurDe = ev => ev.at(-1)?.type === 'erreur' ? ev.at(-1).message : null;
   const texteDe = ev => ev.filter(e => e.type === 'texte').map(e => e.delta).join('');
   const nGoogle = () => appels.filter(a => a === 'google').length;
   const RETRY = [{'@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '0.3s'}];
@@ -534,57 +520,52 @@ if (ETAPES.includes('google')) {
     // 1. 429 par minute avec RetryInfo (0,3 s) : une nouvelle tentative, qui réussit ; pas de repli, délai noté au journal.
     scenario = n => n === 1 ? refus(429, 'RESOURCE_EXHAUSTED', 'Resource has been exhausted (e.g. check quota).', RETRY) : sse('Réponse Google.');
     let t0 = Date.now(), ev = await question(copilote()), ms = Date.now() - t0;
-    verifier('429 limite + RetryInfo → nouvelle tentative réussie, sans repli', ev.at(-1)?.type === 'fin' && !secoursDe(ev) && texteDe(ev) === 'Réponse Google.' && nGoogle() === 2 && ms >= 300
+    verifier('429 limite + RetryInfo → nouvelle tentative réussie, sans repli', ev.at(-1)?.type === 'fin' && !erreurDe(ev) && texteDe(ev) === 'Réponse Google.' && nGoogle() === 2 && ms >= 300
       && lignes.some(l => /Gemini 429 .*nouvelle tentative dans 300 ms/.test(l)), `${nGoogle()} appels Google en ${ms} ms ; journal : ${lignes.join(' | ').slice(0, 160)}`);
 
-    // 2. 429 du quota journalier (quotaId « PerDay ») : pas de nouvelle tentative, repli annoncé comme quota du jour, puis Google
+    // 2. 429 du quota journalier (quotaId « PerDay ») : pas de nouvelle tentative, cause dite (quota du jour), puis Google
     //    évité à la question suivante (même annonce).
     scenario = () => refus(429, 'RESOURCE_EXHAUSTED', 'You exceeded your current quota, please check your plan and billing details.', QUOTA_JOUR);
     let c = copilote();
     ev = await question(c);
-    const n1 = nGoogle(), s1 = secoursDe(ev);
+    const n1 = nGoogle(), s1 = erreurDe(ev);
     const ev2 = await question(c);
-    verifier('429 per day → quota du jour, sans nouvelle tentative ; Google évité ensuite', s1 === 'Quota Google du jour atteint : je passe par OpenAI.' && n1 === 1 && texteDe(ev) === 'Réponse OpenAI.'
-      && ev.at(-1)?.type === 'fin' && nGoogle() === 0 && secoursDe(ev2) === s1, `« ${s1} », ${n1} appel Google puis ${nGoogle()}`);
+    verifier('429 per day → quota du jour, sans nouvelle tentative ; Google évité ensuite', s1 === 'Quota Google du jour atteint : réessaie demain.' && n1 === 1
+      && nGoogle() === 0 && erreurDe(ev2) === s1, `« ${s1} », ${n1} appel Google puis ${nGoogle()}`);
     // (La phrase « billing » du message ne compte pas pour un crédit : elle accompagne tout quota de Google.)
 
     // 3. 404 : modèle inconnu, avec son nom et « mets à jour le copilote » ; en anglais aussi.
     scenario = () => refus(404, 'NOT_FOUND', 'models/gemini-3.8-flash is not found for API version v1beta, or is not supported for generateContent.');
     ev = await question(copilote());
     const evEn = await question(copilote(), {langue: 'en'});
-    verifier('404 → modèle inconnu, nom du modèle et « mets à jour le copilote » (fr et en)', secoursDe(ev) === 'Google ne connaît plus le modèle gemini-3.8-flash : mets à jour le copilote. Je passe par OpenAI.'
-      && secoursDe(evEn) === 'Google no longer knows the model gemini-3.8-flash: update the copilot. Switching to OpenAI.' && nGoogle() === 1 && ev.at(-1)?.type === 'fin', `« ${secoursDe(ev)} »`);
+    verifier('404 → modèle inconnu, nom du modèle et « mets à jour le copilote » (fr et en)', erreurDe(ev) === 'Google ne connaît plus le modèle gemini-3.8-flash : mets à jour le copilote.'
+      && erreurDe(evEn) === 'Google no longer knows the model gemini-3.8-flash: update the copilot.' && nGoogle() === 1, `« ${erreurDe(ev)} »`);
 
     // 4. 400 API_KEY_INVALID (question écrite) : clé refusée, dite telle quelle.
     scenario = () => refus(400, 'INVALID_ARGUMENT', 'API key not valid. Please pass a valid API key.', [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason: 'API_KEY_INVALID'}]);
     ev = await question(copilote());
-    verifier('400 API key → clé refusée (question écrite)', secoursDe(ev) === 'Clé Google refusée : vérifie la clé dans .env. Je passe par OpenAI.' && nGoogle() === 1 && ev.at(-1)?.type === 'fin', `« ${secoursDe(ev)} »`);
+    verifier('400 API key → clé refusée (question écrite)', erreurDe(ev) === 'Clé Google refusée : vérifie la clé dans .env.' && nGoogle() === 1, `« ${erreurDe(ev)} »`);
 
     // 5. 403 PERMISSION_DENIED pendant l'écoute vocale (les deux écoutes Google refusées) : vraie cause dite, statut HTTP au
-    //    journal, jamais « Google ne répond pas » ; la question est transcrite par OpenAI et la réponse vient d'OpenAI.
+    //    journal, jamais « Google ne répond pas ».
     scenario = () => refus(403, 'PERMISSION_DENIED', 'Your API key doesn\'t have the required scope. API key is restricted.');
     const souffle = Buffer.alloc(48000);
     for (let i = 0; i < souffle.length; i += 2) souffle.writeInt16LE(Math.round((Math.random() * 2 - 1) * 570), i);
     ev = await question(copilote(), {texte: undefined, audio: wav16(souffle).toString('base64')});
     const journalEcoute = lignes.find(l => /écoute Google impossible/.test(l)) || '';
-    verifier('403 pendant l\'écoute vocale → « Clé Google refusée », statut HTTP au journal', secoursDe(ev) === 'Clé Google refusée : vérifie la clé dans .env. Je passe par OpenAI.'
-      && /Gemini 403 : PERMISSION_DENIED/.test(journalEcoute) && !ev.some(e => /ne répond pas/.test(e.texte || e.message || '')) && ev.find(e => e.type === 'question')?.texte === 'Question de secours'
-      && ev.at(-1)?.type === 'fin', `« ${secoursDe(ev)} » ; journal : « ${journalEcoute.slice(0, 120)} »`);
+    verifier('403 pendant l\'écoute vocale → « Clé Google refusée », statut HTTP au journal', erreurDe(ev) === 'Clé Google refusée : vérifie la clé dans .env.'
+      && /Gemini 403 : PERMISSION_DENIED/.test(journalEcoute) && !ev.some(e => /ne répond pas/.test(e.texte || e.message || '')), `« ${erreurDe(ev)} » ; journal : « ${journalEcoute.slice(0, 120)} »`);
 
     // 6. 503 (surcharge) sans RetryInfo : nouvelle tentative après 2 s, réussie.
     scenario = n => n === 1 ? refus(503, 'UNAVAILABLE', 'The model is overloaded. Please try again later.') : sse('Réponse Google.');
     t0 = Date.now(); ev = await question(copilote()); ms = Date.now() - t0;
-    verifier('503 → nouvelle tentative après 2 s, réussie', ev.at(-1)?.type === 'fin' && !secoursDe(ev) && texteDe(ev) === 'Réponse Google.' && nGoogle() === 2 && ms >= 2000 && ms < 6000, `${nGoogle()} appels en ${ms} ms`);
+    verifier('503 → nouvelle tentative après 2 s, réussie', ev.at(-1)?.type === 'fin' && !erreurDe(ev) && texteDe(ev) === 'Réponse Google.' && nGoogle() === 2 && ms >= 2000 && ms < 6000, `${nGoogle()} appels en ${ms} ms`);
 
-    // 7. Facturation (crédit prépayé épuisé) : repli « crédit », Google évité ensuite ; et sans clé OpenAI, l'erreur dédiée.
+    // 7. Facturation (crédit prépayé épuisé) : « crédit » dit, Google évité ensuite.
     scenario = () => refus(403, 'PERMISSION_DENIED', 'This API method requires billing to be enabled: prepaid credit exhausted.');
     c = copilote(); ev = await question(c); const ev7 = await question(c), n7 = nGoogle();
-    const sansOpenAI = await question(copilote({GEMINI_API_KEY: 'cle-factice'}));
-    scenario = () => refus(400, 'INVALID_ARGUMENT', 'API key not valid. Please pass a valid API key.');
-    const sansOpenAI2 = await question(copilote({GEMINI_API_KEY: 'cle-factice'}));
-    verifier('crédit → « Crédit Google épuisé », Google évité ensuite ; sans clé OpenAI, message dédié par cas', secoursDe(ev) === 'Crédit Google épuisé : je passe par OpenAI.' && secoursDe(ev7) === secoursDe(ev) && n7 === 0
-      && sansOpenAI.at(-1)?.type === 'erreur' && sansOpenAI.at(-1).message === 'Crédit Google épuisé, et pas de clé OpenAI pour prendre le relais.'
-      && sansOpenAI2.at(-1)?.message === 'Clé Google refusée : vérifie la clé dans .env (et pas de clé OpenAI pour prendre le relais).', `« ${sansOpenAI.at(-1)?.message} » / « ${sansOpenAI2.at(-1)?.message} »`);
+    verifier('crédit → « Crédit Google épuisé », Google évité ensuite', erreurDe(ev) === 'Crédit Google épuisé : je ne peux pas répondre pour l’instant.' && erreurDe(ev7) === erreurDe(ev) && n7 === 0,
+      `« ${erreurDe(ev)} » / « ${erreurDe(ev7)} »`);
 
     // 8. Encyclopédie introuvable (COPILOTE_CK3_DIR faux) : dite UNE fois dans le panneau (événement avertissement), le copilote
     //    répond quand même ; la question suivante ne la répète pas.
@@ -605,7 +586,7 @@ if (ETAPES.includes('google')) {
 
     // 10. Voix : 429 « limite » dont le délai Google (20 s) dépasse la garde du premier son (8 s). L'attente est bornée à 4 s (au
     //     journal) et, la garde tombant pendant l'attente (le 429 arrive après 5 s : 5 + 4 > 8), c'est la cause classée qui est dite,
-    //     « Google limite le rythme », jamais « Google ne répond pas » ; la réponse vient de Google, la voix d'OpenAI, un seul appel
+    //     jamais « Google ne répond pas » ; la réponse vient de Google, en texte seulement (« Voix indisponible »), un seul appel
     //     de voix à Google.
     scenario = async (n, u) => {
       if (!/tts/.test(u)) return sse('Réponse Google.');
@@ -613,10 +594,10 @@ if (ETAPES.includes('google')) {
       return refus(429, 'RESOURCE_EXHAUSTED', 'Resource has been exhausted (e.g. check quota).', [{'@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '20s'}]);
     };
     t0 = Date.now(); ev = await question(copilote(), {voix: true}); ms = Date.now() - t0;
-    verifier('voix : 429 limite + RetryInfo 20 s, garde du premier son pendant l\'attente → « Google limite le rythme », voix OpenAI', secoursDe(ev) === 'Google limite le rythme (trop de demandes) : je passe par OpenAI.'
-      && texteDe(ev) === 'Réponse Google.' && nGoogle() === 2 && appels.includes('openai') && ev.some(e => e.type === 'audio') && !ev.some(e => /ne répond pas/.test(e.texte || e.message || ''))
+    verifier('voix : 429 limite + RetryInfo 20 s, garde du premier son pendant l\'attente → texte seul, « Voix indisponible »', ev.some(e => e.type === 'etape' && e.texte === 'Voix indisponible : réponse en texte seulement.')
+      && texteDe(ev) === 'Réponse Google.' && nGoogle() === 2 && !ev.some(e => e.type === 'audio') && !ev.some(e => /ne répond pas/.test(e.texte || e.message || ''))
       && ev.at(-1)?.type === 'fin' && lignes.some(l => /Gemini 429 .*nouvelle tentative dans 4000 ms/.test(l)) && ms >= 7900 && ms < 12000,
-      `« ${secoursDe(ev)} », ${nGoogle()} appels Google en ${ms} ms ; journal : ${lignes.filter(l => /429/.test(l)).join(' | ').slice(0, 160)}`);
+      `${nGoogle()} appels Google en ${ms} ms ; journal : ${lignes.filter(l => /429/.test(l)).join(' | ').slice(0, 160)}`);
   } finally { globalThis.fetch = vraiFetch; await rm(racine, {recursive: true, force: true}).catch(() => {}); }
   console.log(`Google : ${resultats.filter(Boolean).length}/${resultats.length} vérifications réussies`);
   if (resultats.some(x => !x)) process.exitCode = 1;

@@ -550,9 +550,9 @@
   // État du jeu et des clés (dernière réponse du serveur) -> début de la ligne d'état, dans la langue du moment.
   function majBase() {
     const j = infoEtat;
-    pretRepos = DEMO === '1' || !j || (!j.injoignable && !j.erreur && !!(j.cle?.gemini || j.cle?.openai) && !!j.ck3);
+    pretRepos = DEMO === '1' || !j || (!j.injoignable && !j.erreur && !!j.cle?.gemini && !!j.ck3);
     baseRepos = DEMO === '1' ? T.pretDemo : !j ? T.pret : j.injoignable ? T.injoignable : j.erreur ? T.cerveauIndisponible
-      : !j.cle?.gemini && !j.cle?.openai ? T.aucuneCle : j.aide?.ok === false ? T.aideEnPanne : !j.ck3 ? T.ck3Absent : T.pretVersion(j.version);
+      : !j.cle?.gemini ? T.aucuneCle : j.aide?.ok === false ? T.aideEnPanne : !j.ck3 ? T.ck3Absent : T.pretVersion(j.version);
     majRepos();
   }
 

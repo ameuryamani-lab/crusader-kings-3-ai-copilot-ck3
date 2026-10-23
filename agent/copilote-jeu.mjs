@@ -1,24 +1,20 @@
 // Copilote de jeu (06/10/2026, demande d'Ameur ; CK3 seulement pour l'instant) : Ameur parle (ou tape) pendant qu'il joue, le
 // copilote regarde la fenêtre du jeu (capture par l'aide Windows, jamais de touche envoyée), cherche dans l'Encyclopédie du jeu
 // installé et sur Google, puis répond en français, court, avec les libellés anglais exacts de l'écran, en texte et à voix haute.
-// Tout ce qui est propre à CK3 est dans copilote-ck3-savoir.mjs. Repli sur OpenAI quand Google refuse (crédit, panne), car le
-// crédit Google est partagé avec la voix de Jarvis et tout s'arrête quand il est épuisé.
+// Tout ce qui est propre à CK3 est dans copilote-ck3-savoir.mjs. Tout passe par Google (Gemini) ; quand Google refuse
+// (crédit, quota, panne), le joueur en apprend la cause exacte.
 import {writeFile, appendFile, mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {chargerSavoirCk3, versionInstallee, formesJoueur} from './copilote-ck3-savoir.mjs';
 
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta';
-const OPENAI = 'https://api.openai.com/v1';
 // Modèles vérifiés le 06/10/2026 sur la liste de l'API. Pas de 3.8 Flash-Lite : l'écoute passe par 3.8 Flash au plus bas niveau
 // de réflexion (3.5 Flash-Lite a mal transcrit la question d'essai : accents perdus, « count » pour « comte »), doublée par le
 // modèle de transcription, plus rapide mais sans les termes du jeu.
-const MODELES = {ecoute: 'gemini-3.8-flash', transcription: 'gemini-3.5-transcribe', reponse: 'gemini-3.8-flash', voix: 'gemini-3.8-flash-lite-tts',
-  secours: 'gpt-6-luna', transcriptionSecours: 'gpt-4o-mini-transcribe', voixSecours: 'gpt-4o-mini-tts'};
-const VOIX_GEMINI = 'Kore', VOIX_OPENAI = 'marin';
+const MODELES = {ecoute: 'gemini-3.8-flash', transcription: 'gemini-3.5-transcribe', reponse: 'gemini-3.8-flash', voix: 'gemini-3.8-flash-lite-tts'};
+const VOIX_GEMINI = 'Kore';
 // Dollars par million de jetons (pages de prix du 06/10/2026 ; prix promotionnels de Google jusqu'au 31/12/2026, doublés ensuite).
-const PRIX = {'gemini-3.8-flash': [0.75, 3.75], 'gemini-3.5-flash': [1.5, 9], 'gemini-3.5-transcribe': [2, 12], 'gemini-3.8-flash-lite-tts': [0.5, 6], 'gemini-3.8-flash-tts': [0.5, 9], 'gpt-6-luna': [0.1, 0.5]};
-const PRIX_MINUTE = {'gpt-4o-mini-transcribe': 0.003, 'gpt-4o-mini-tts': 0.015};
-const PRIX_RECHERCHE_OPENAI = 0.01;   // 10 $ les 1 000 ; les 5 000 recherches Google mensuelles sont gratuites
+const PRIX = {'gemini-3.8-flash': [0.75, 3.75], 'gemini-3.5-flash': [1.5, 9], 'gemini-3.5-transcribe': [2, 12], 'gemini-3.8-flash-lite-tts': [0.5, 6], 'gemini-3.8-flash-tts': [0.5, 9]};
 const MAX_CORPS = 8 * 1024 * 1024;
 const OUBLI_MS = 10 * 60e3, ECHANGES_MAX = 4;
 const ETAPES = {capture: 'Je regarde ton écran…', ecoute: 'J’écoute ta question…', reflexion: 'Je réfléchis…', prepare: 'Je prépare la réponse…', recherche: 'Je vérifie sur Internet…', voix: 'Je te lis la réponse…'};
@@ -29,50 +25,38 @@ const ETAPES_EN = {capture: 'Looking at your screen…', ecoute: 'Listening to y
 const TEXTES = {
   fr: {
     etapes: ETAPES,
-    // Repli sur OpenAI par cause classée (classerGemini, 10/10/2026 : un 429 passait pour « crédit épuisé », une clé refusée pour
-    // « Google ne répond pas ») ; modeleInconnu reçoit le nom du modèle. Les phrases crédit et panne sont celles d'avant.
-    secours: {credit: 'Crédit Google épuisé : je passe par OpenAI.', quotaJour: 'Quota Google du jour atteint : je passe par OpenAI.',
-      limite: 'Google limite le rythme (trop de demandes) : je passe par OpenAI.', modeleInconnu: m => `Google ne connaît plus le modèle ${m} : mets à jour le copilote. Je passe par OpenAI.`,
-      cleRefusee: 'Clé Google refusée : vérifie la clé dans .env. Je passe par OpenAI.', indisponible: 'Google est surchargé : je passe par OpenAI.', panne: 'Google ne répond pas : je passe par OpenAI.'},
-    secoursImpossible: {credit: 'Crédit Google épuisé, et pas de clé OpenAI pour prendre le relais.', quotaJour: 'Quota Google du jour atteint, et pas de clé OpenAI pour prendre le relais.',
-      limite: 'Google limite le rythme (trop de demandes), et pas de clé OpenAI pour prendre le relais.', modeleInconnu: m => `Google ne connaît plus le modèle ${m} : mets à jour le copilote (et pas de clé OpenAI pour prendre le relais).`,
-      cleRefusee: 'Clé Google refusée : vérifie la clé dans .env (et pas de clé OpenAI pour prendre le relais).', indisponible: 'Google est surchargé, et pas de clé OpenAI pour prendre le relais.',
-      panne: 'Google ne répond pas, et pas de clé OpenAI pour prendre le relais.'},
-    secoursSansCle: 'Pas de clé Google : je passe par OpenAI.',
+    // Google refuse, par cause classée (classerGemini, 10/10/2026 : un 429 passait pour « crédit épuisé », une clé refusée pour
+    // « Google ne répond pas ») ; modeleInconnu reçoit le nom du modèle.
+    googleIndisponible: {credit: 'Crédit Google épuisé : je ne peux pas répondre pour l’instant.', quotaJour: 'Quota Google du jour atteint : réessaie demain.',
+      limite: 'Google limite le rythme (trop de demandes) : réessaie dans un moment.', modeleInconnu: m => `Google ne connaît plus le modèle ${m} : mets à jour le copilote.`,
+      cleRefusee: 'Clé Google refusée : vérifie la clé dans .env.', indisponible: 'Google est surchargé : réessaie dans un moment.', panne: 'Google ne répond pas : réessaie dans un moment.'},
     // Encyclopédie du jeu introuvable (copilote-ck3-savoir.mjs) : dit UNE fois dans le panneau, le copilote répond sans elle.
     encyclopedieIntrouvable: e => `Encyclopédie introuvable : ${e?.code === 'jeu-introuvable' ? `Crusader Kings III n'est dans aucun Steam trouvé (${e.steams?.join(', ') || 'aucun'}). Indique son dossier dans COPILOTE_CK3_DIR (fichier .env).`
       : e?.code === 'dossier-force' ? `COPILOTE_CK3_DIR=${e.dossier} n'est pas le dossier de Crusader Kings III (launcher\\launcher-settings.json absent).` : e?.message || '?'} Je réponds sans elle.`,
-    poseTaQuestion: 'Pose ta question à voix haute ou par écrit.', aucuneCle: 'Aucune clé Google ni OpenAI dans le fichier .env.',
+    poseTaQuestion: 'Pose ta question à voix haute ou par écrit.', aucuneCle: 'Aucune clé Google dans le fichier .env.',
     pasWav: 'Le son reçu n’est pas un fichier WAV.', rienEntendu: 'Je n’ai rien entendu.',
     coupee: 'La réponse de Google a été coupée en route. Repose ta question.', voixIndisponible: 'Voix indisponible : réponse en texte seulement.',
-    tropLong: 'La réponse prend trop de temps. Repose ta question.', horsLigne: 'Pas de connexion Internet : je n’arrive à joindre ni Google ni OpenAI.',
-    aucunService: 'Google et OpenAI ne répondent pas pour l’instant. Réessaie dans un moment.', echec: m => `Je n’ai pas pu répondre : ${m}`,
+    tropLong: 'La réponse prend trop de temps. Repose ta question.', horsLigne: 'Pas de connexion Internet : je n’arrive pas à joindre Google.', echec: m => `Je n’ai pas pu répondre : ${m}`,
     tropLourde: 'Question trop lourde (8 Mo au maximum).', jsonInvalide: 'Corps JSON invalide.',
     sansImage: 'indisponible', captureVide: 'capture vide',
   },
   en: {
     etapes: ETAPES_EN,
-    secours: {credit: 'Google credit is used up: switching to OpenAI.', quotaJour: 'Google daily quota reached: switching to OpenAI.',
-      limite: 'Google is rate-limiting (too many requests): switching to OpenAI.', modeleInconnu: m => `Google no longer knows the model ${m}: update the copilot. Switching to OpenAI.`,
-      cleRefusee: 'Google key refused: check the key in .env. Switching to OpenAI.', indisponible: 'Google is overloaded: switching to OpenAI.', panne: 'Google is not responding: switching to OpenAI.'},
-    secoursImpossible: {credit: 'Google credit is used up, and there is no OpenAI key to take over.', quotaJour: 'Google daily quota reached, and there is no OpenAI key to take over.',
-      limite: 'Google is rate-limiting (too many requests), and there is no OpenAI key to take over.', modeleInconnu: m => `Google no longer knows the model ${m}: update the copilot (and there is no OpenAI key to take over).`,
-      cleRefusee: 'Google key refused: check the key in .env (and there is no OpenAI key to take over).', indisponible: 'Google is overloaded, and there is no OpenAI key to take over.',
-      panne: 'Google is not responding, and there is no OpenAI key to take over.'},
-    secoursSansCle: 'No Google key: switching to OpenAI.',
+    googleIndisponible: {credit: 'Google credit is used up: I can’t answer right now.', quotaJour: 'Google daily quota reached: try again tomorrow.',
+      limite: 'Google is rate-limiting (too many requests): try again in a moment.', modeleInconnu: m => `Google no longer knows the model ${m}: update the copilot.`,
+      cleRefusee: 'Google key refused: check the key in .env.', indisponible: 'Google is overloaded: try again in a moment.', panne: 'Google is not responding: try again in a moment.'},
     encyclopedieIntrouvable: e => `Encyclopedia not found: ${e?.code === 'jeu-introuvable' ? `Crusader Kings III is in none of the Steam folders found (${e.steams?.join(', ') || 'none'}). Set COPILOTE_CK3_DIR to its folder (.env file).`
       : e?.code === 'dossier-force' ? `COPILOTE_CK3_DIR=${e.dossier} is not the Crusader Kings III folder (launcher\\launcher-settings.json missing).` : e?.message || '?'} Answering without it.`,
-    poseTaQuestion: 'Ask your question out loud or in writing.', aucuneCle: 'No Google or OpenAI key in the .env file.',
+    poseTaQuestion: 'Ask your question out loud or in writing.', aucuneCle: 'No Google key in the .env file.',
     pasWav: 'The sound received is not a WAV file.', rienEntendu: 'I didn’t hear anything.',
     coupee: 'Google’s answer was cut off. Ask your question again.', voixIndisponible: 'Voice unavailable: text answer only.',
-    tropLong: 'The answer is taking too long. Ask your question again.', horsLigne: 'No Internet connection: I can’t reach Google or OpenAI.',
-    aucunService: 'Google and OpenAI are not responding right now. Try again in a moment.', echec: m => `I couldn’t answer: ${m}`,
+    tropLong: 'The answer is taking too long. Ask your question again.', horsLigne: 'No Internet connection: I can’t reach Google.', echec: m => `I couldn’t answer: ${m}`,
     tropLourde: 'Question too large (8 MB at most).', jsonInvalide: 'Invalid JSON body.',
     sansImage: 'unavailable', captureVide: 'empty capture',
   },
 };
 const langueValide = l => l === 'en' ? 'en' : 'fr';   // toute autre valeur revient au français
-// Texte d'un dictionnaire par cas (secours, secoursImpossible) : cas inconnu = panne ; modeleInconnu est une fonction du modèle.
+// Texte d'un dictionnaire par cas (googleIndisponible) : cas inconnu = panne ; modeleInconnu est une fonction du modèle.
 const texteCas = (dico, cas, modele) => { const t = dico[cas] || dico.panne; return typeof t === 'function' ? t(modele || '?') : t; };
 // Erreurs de l'aide Windows (aide-windows.mjs) : ses phrases sont en français, son code (err.code) dit laquelle. Les fausses aides
 // des essais n'ont que la phrase : elle sert alors à retrouver le code.
@@ -103,7 +87,7 @@ const heureLocale = (d = new Date()) => d.toLocaleString('fr-FR');
 const delai = (signal, ms) => AbortSignal.any([signal, AbortSignal.timeout(ms)]);
 const francais = (message, extra = {}) => Object.assign(new Error(message), {francais: true}, extra);
 
-// Flux SSE (Google et OpenAI) : un objet JSON par bloc « data: ».
+// Flux SSE de Google : un objet JSON par bloc « data: ».
 async function* evenementsSse(reponse) {
   const lecteur = reponse.body.getReader(), dec = new TextDecoder();
   let buf = '';
@@ -124,7 +108,7 @@ async function* evenementsSse(reponse) {
 // sur 503). cas : credit (facturation), quotaJour (429 du quota journalier : « per day » dans le message ou dans le quotaId des
 // details), limite (autre 429 : par minute ; attenteMs lu dans RetryInfo.retryDelay « 7s »), modeleInconnu (404, « not found »,
 // « is not supported »), cleRefusee (400/401/403 sur la clé), indisponible (503, overloaded), sinon null (panne). credit reste
-// vrai pour crédit et quota du jour : Google est alors évité 5 min, et le repli OpenAI annoncé comme tel.
+// vrai pour crédit et quota du jour : Google est alors évité 5 min, et la cause dite telle quelle.
 function classerGemini(statut, texte, details) {
   const t = String(texte || ''), d = Array.isArray(details) ? details : [];
   const quotas = d.flatMap(x => x?.violations || []).map(v => v?.quotaId || '').join(' ');
@@ -155,10 +139,6 @@ const attendreSauf = (ms, signal) => new Promise((ok, ko) => {
   const fin = () => { clearTimeout(t); ko(signal.reason); };
   signal?.addEventListener('abort', fin, {once: true});
 });
-async function erreurOpenAI(r) {
-  const j = await r.json().catch(() => ({}));
-  return Object.assign(new Error(`OpenAI ${r.status} : ${(j.error?.message || '').slice(0, 300)}`), {statut: r.status});
-}
 // Erreur envoyée par Google AU MILIEU d'un flux SSE déjà commencé (réponse 200) : {"error":{code, status, message}}. Sans ce
 // contrôle, une réponse tronquée passait pour complète (« fin », mise en mémoire, pas de repli).
 function erreurDansFlux(e, modele = null) {
@@ -533,7 +513,7 @@ ${s?.fonctionsExtensions || ''}`.trim();
 
 export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, journal = console, modeles = {}, reglagesRegard = {}}) {
   const M = {...MODELES, ...modeles};   // modeles : seulement pour les essais (forcer une panne de Google) ; reglagesRegard aussi
-  const cleGemini = env.GEMINI_API_KEY, cleOpenAI = env.OPENAI_API_KEY;
+  const cleGemini = env.GEMINI_API_KEY;
   // Prénom facultatif (.env ou variable d'environnement) : sans lui, les consignes parlent du « joueur » (appli publiée).
   const prenom = env.COPILOTE_PRENOM || process.env.COPILOTE_PRENOM || null;
   const joueur = formesJoueur(prenom);
@@ -543,7 +523,7 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
   // langueMemoire : langue des échanges gardés ; une question dans l'autre langue repart de zéro (un historique mélangé faisait
   // mélanger les langues au modèle).
   let historique = [], dernierEchange = 0, enCours = null, epoqueMemoire = 0, langueMemoire = 'fr';
-  const panne = {jusqua: 0, cas: null};   // crédit Google épuisé (ou quota du jour) : on passe directement par OpenAI pendant 5 min
+  const panne = {jusqua: 0, cas: null};   // crédit Google épuisé (ou quota du jour) : Google n'est plus appelé pendant 5 min
 
   // Savoir du jeu : chargé au démarrage, rechargé si Steam a mis le jeu à jour (version relue au plus une fois par minute).
   // COPILOTE_CK3_DIR (.env ou variable d'environnement, 10/10/2026) : dossier du jeu imposé quand Steam est ailleurs.
@@ -598,7 +578,6 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
   }
 
   const enteteGemini = {'Content-Type': 'application/json', 'x-goog-api-key': cleGemini};
-  const enteteOpenAI = {'Content-Type': 'application/json', Authorization: `Bearer ${cleOpenAI}`};
   const geminiDispo = () => !!cleGemini && Date.now() > panne.jusqua;
   // Appel à Google : rend la réponse si r.ok, sinon lève l'erreur classée (statut HTTP au journal via son message). Une seule
   // nouvelle tentative sur « limite » (429 par minute) et « indisponible » (503), après le délai que Google indique (attenteMax au
@@ -628,7 +607,7 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
     const t0 = Date.now(), epoque = epoqueMemoire;
     const en = langue === 'en', T = TEXTES[en ? 'en' : 'fr'], ETAPES_Q = T.etapes;
     const q = {t: new Date().toISOString(), heure: heureLocale(), mode: audio ? 'voix' : 'texte', voix, question: '', reponse: '', modeles: [], jetons: {},
-      durees: {}, recherches: [], sources: 0, extraits: [], cout: 0, secours: false, erreur: null};
+      durees: {}, recherches: [], sources: 0, extraits: [], cout: 0, erreur: null};
     const ms = () => Date.now() - t0;
     function compter(modele, entree = 0, sortie = 0, pensee = 0) {
       const [pe, ps] = PRIX[modele] || [0, 0];
@@ -638,20 +617,12 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
       if (!q.modeles.includes(modele)) q.modeles.push(modele);
       conso?.enregistrer({agent: 'jarvis', modele, source: 'copilote CK3', usage: {input_tokens: entree, output_tokens: sortie + pensee, output_tokens_details: {reasoning_tokens: pensee}}});
     }
-    function compterMinutes(modele, secondes) {
-      q.cout += (PRIX_MINUTE[modele] || 0) * secondes / 60 * 100;
-      const j = (q.jetons[modele] ??= {secondes: 0, appels: 0}); j.secondes = +(j.secondes + secondes).toFixed(1); j.appels++;
-      if (!q.modeles.includes(modele)) q.modeles.push(modele);
-      conso?.enregistrer({agent: 'jarvis', modele, source: 'copilote CK3', secondes});
-    }
     // e : erreur classée (cas, credit, modele), ou {credit: true, cas} quand Google est déjà évité (panne en cours).
-    function secours(e) {
+    // Lève toujours le message de la cause, dans la langue de la question.
+    function googleIndisponible(e) {
       const cas = e?.cas || (Date.now() < panne.jusqua ? panne.cas : null) || 'panne';
-      if (!cleOpenAI) throw francais(texteCas(T.secoursImpossible, cas, e?.modele));
       if (e?.credit) { panne.jusqua = Date.now() + 5 * 60e3; panne.cas = cas; }
-      if (q.secours) return;
-      q.secours = true;
-      pousser({type: 'etape', etape: 'reflexion', secours: true, texte: !cleGemini ? T.secoursSansCle : texteCas(T.secours, cas, e?.modele)});
+      throw francais(texteCas(T.googleIndisponible, cas, e?.modele));
     }
     const panneEnCours = () => ({credit: Date.now() < panne.jusqua, cas: panne.cas});
 
@@ -661,7 +632,7 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
     try {
       pre = prendreRegard();
       if (!audio && !String(texte || '').trim()) throw francais(T.poseTaQuestion);
-      if (!cleGemini && !cleOpenAI) throw francais(T.aucuneCle);
+      if (!cleGemini) throw francais(T.aucuneCle);
       const son = audio ? lireWav(audio, T) : null;
       if (son && (son.secondes < 0.3 || son.silence)) throw francais(T.rienEntendu);
       if (!son) q.question = String(texte).trim().slice(0, 2000);   // noté au journal même si la suite échoue
@@ -689,7 +660,7 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
       if (son) {
         pousser({type: 'etape', etape: 'ecoute', texte: ETAPES_Q.ecoute});
         ecoute = (async () => {
-          if (!geminiDispo()) { secours(panneEnCours()); return {question: await transcrireOpenAI(son), termes: []}; }
+          if (!geminiDispo()) googleIndisponible(panneEnCours());
           // Deux écoutes en parallèle : Flash rend la question ET les termes anglais du jeu, mais a mis 3 à 8 s le 06/10 ; le modèle
           // de transcription répond en 1,7 s. Flash est attendu au plus 1,5 s de plus, sinon on continue sans ses termes (le lexique
           // français-anglais du savoir prend le relais).
@@ -703,8 +674,7 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
           if (premier.erreur) {
             if (annulee(premier.erreur)) throw premier.erreur;
             journal.error?.('Copilote CK3 : écoute Google impossible :', premier.erreur.message);
-            secours(premier.erreur);
-            return {question: await transcrireOpenAI(son), termes: []};
+            googleIndisponible(premier.erreur);
           }
           // Silence ou pas : c'est le modèle de transcription qui tranche. Flash a déjà inventé une question à partir de l'image
           // quand l'audio était muet (essai du 06/10).
@@ -792,10 +762,9 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
           if (annulee(e)) throw e;
           if (q.reponse) throw francais(T.coupee);
           journal.error?.('Copilote CK3 : Gemini indisponible :', e.message);
-          secours(e);
+          googleIndisponible(e);
         }
-      } else secours(panneEnCours());
-      if (!rep) rep = await repondreOpenAI({parts, systeme, signal, surTexte});
+      } else googleIndisponible(panneEnCours());
       q.durees.reponse = ms();
       if (rep.liens.length || rep.suggestionsHtml) pousser({type: 'sources', liens: rep.liens, ...(rep.suggestionsHtml ? {suggestionsHtml: rep.suggestionsHtml} : {})});
       q.sources = rep.liens.length; q.recherches = rep.recherches;
@@ -825,7 +794,7 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
     } finally {
       await journaliser({t: q.t, heure: q.heure, mode: q.mode, voix: q.voix, ...(en ? {langue} : {}), question: q.question, reponse: q.reponse, modeles: q.modeles, jetons: q.jetons,
         durees: q.durees, ...(q.ageCapture != null ? {ageCapture: q.ageCapture} : {}), ...(q.images != null ? {images: q.images} : {}), ...(q.regard ? {regard: q.regard} : {}),
-        recherches: q.recherches, sources: q.sources, extraits: q.extraits, coutCents: +q.cout.toFixed(3), secours: q.secours,
+        recherches: q.recherches, sources: q.sources, extraits: q.extraits, coutCents: +q.cout.toFixed(3),
         ...(q.erreurVoix ? {erreurVoix: q.erreurVoix} : {}), ...(q.incomplete ? {incomplete: true} : {}), erreur: q.erreur});
     }
 
@@ -857,17 +826,6 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
       return (j.candidates?.[0]?.content?.parts || []).map(p => p.audioTranscription?.text ?? (p.thought ? '' : p.text || '')).join(' ').trim();   // réponse dans audioTranscription.text
     }
 
-    async function transcrireOpenAI(son) {
-      const form = new FormData();
-      form.append('model', M.transcriptionSecours);
-      form.append('language', langue);
-      form.append('file', new Blob([Buffer.from(son.b64, 'base64')], {type: 'audio/wav'}), 'question.wav');
-      const r = await fetch(`${OPENAI}/audio/transcriptions`, {method: 'POST', headers: {Authorization: `Bearer ${cleOpenAI}`}, body: form, signal: delai(signal, 30000)});
-      if (!r.ok) throw await erreurOpenAI(r);
-      const j = await r.json();
-      compterMinutes(M.transcriptionSecours, son.secondes);
-      return String(j.text || '').trim();
-    }
 
     // Historique (texte seulement) + tour actuel. parts : [{texte} | {image: Buffer}].
     async function repondreGemini({parts, systeme, signal, surTexte, pousser}) {
@@ -878,7 +836,7 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
       // prétendre chercher sur Internet (« Je vérifie sur Internet » n'est dit que si Google annonce une vraie recherche).
       const minuteur = setTimeout(() => { if (!texte && !recherche) pousser({type: 'etape', etape: 'reflexion', texte: ETAPES_Q.prepare}); }, 3500);
       // Le 06/10, Flash a « réfléchi » 38 s avant d'écrire (3 928 jetons de réflexion au niveau low) : sans premier mot après
-      // 25 s (une réponse avec recherche Google a mis jusqu'à 18 s), on passe par OpenAI plutôt que de laisser Ameur attendre.
+      // 25 s (une réponse avec recherche Google a mis jusqu'à 18 s), on dit que Google ne répond pas plutôt que de laisser Ameur attendre.
       const lenteur = new AbortController();
       const garde = setTimeout(() => lenteur.abort(new DOMException('Google met trop de temps à écrire', 'TimeoutError')), 25000);
       try {
@@ -905,30 +863,10 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
       return {texte, liens, suggestionsHtml: gm?.searchEntryPoint?.renderedContent || null, recherches: gm?.webSearchQueries || [], complet: !!fin};
     }
 
-    async function repondreOpenAI({parts, systeme, signal, surTexte}) {
-      const input = historique.flatMap(h => [{role: 'user', content: h.question}, {role: 'assistant', content: h.reponse}]);
-      input.push({role: 'user', content: parts.map(p => p.image ? {type: 'input_image', image_url: `data:image/jpeg;base64,${p.image.toString('base64')}`, detail: 'high'} : {type: 'input_text', text: p.texte})});
-      const r = await fetch(`${OPENAI}/responses`, {method: 'POST', headers: enteteOpenAI, signal: delai(signal, 60000), body: JSON.stringify({
-        model: M.secours, instructions: systeme, input, stream: true, reasoning: {effort: 'low'}, tools: [{type: 'web_search'}]})});
-      if (!r.ok) throw await erreurOpenAI(r);
-      let texte = '', usage = null, recherches = 0, termine = false;
-      const liens = [], vus = new Set();
-      for await (const j of evenementsSse(r)) {
-        if (j.type === 'response.output_text.delta') { texte += j.delta; surTexte(j.delta); }
-        else if (j.type === 'response.output_text.annotation.added' && j.annotation?.type === 'url_citation' && !vus.has(j.annotation.url)) { vus.add(j.annotation.url); liens.push({titre: j.annotation.title || new URL(j.annotation.url).hostname, url: j.annotation.url}); }
-        else if (j.type === 'response.web_search_call.completed') recherches++;
-        else if (j.type === 'response.completed') { usage = j.response?.usage; termine = true; }
-        else if (j.type === 'error' || j.type === 'response.failed') throw new Error(`OpenAI : ${j.error?.message || j.response?.error?.message || j.message || 'échec'}`);
-      }
-      if (usage) compter(M.secours, usage.input_tokens, (usage.output_tokens || 0) - (usage.output_tokens_details?.reasoning_tokens || 0), usage.output_tokens_details?.reasoning_tokens || 0);
-      q.cout += recherches * PRIX_RECHERCHE_OPENAI * 100;
-      if (!texte.trim()) throw new Error('OpenAI : réponse vide');
-      return {texte, liens: liens.slice(0, 6), suggestionsHtml: null, recherches: recherches ? [`${recherches} recherche(s) web OpenAI`] : [], complet: termine};
-    }
 
     // Voix : Gemini TTS en flux par streamGenerateContent (premier son mesuré à 0,65 s, contre 2,4 s par l'API Interactions),
-    // puis l'API Interactions seulement si Google REFUSE cette voie (erreur 4xx hors crédit), sinon (Google muet 8 s, panne 5xx,
-    // crédit) OpenAI tout de suite. Une phrase déjà commencée n'est jamais relue en double.
+    // puis l'API Interactions seulement si Google REFUSE cette voie (erreur 4xx hors crédit) ; sinon (Google muet 8 s, panne 5xx,
+    // crédit) la voix s'arrête et la réponse reste en texte. Une phrase déjà commencée n'est jamais relue en double.
     async function synthetiser(texte, surMorceau) {
       let recu = false;
       const morceau = b => { recu = true; surMorceau(b); };
@@ -937,10 +875,11 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
           if (annulee(e) || signal.aborted || recu) throw e;
           const refus = !e.credit && e.statut !== 429 && e.statut >= 400 && e.statut < 500;   // 429 « limite » : déjà retenté, pas une autre voie
           if (refus) try { return await voixInteractions(texte, morceau); } catch (e2) { if (annulee(e2) || signal.aborted || recu) throw e2; }
-          secours(e);
+          if (e?.credit) { panne.jusqua = Date.now() + 5 * 60e3; panne.cas = e.cas; }
+          throw e;
         }
-      } else if (!cleOpenAI) throw new Error('voix indisponible');
-      return voixOpenAI(texte, morceau);
+      }
+      throw new Error('voix indisponible');
     }
     function decoupeur(surMorceau) {   // garde des échantillons de 16 bits entiers
       let reste = null;
@@ -982,15 +921,6 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
         compter(M.voix, usage.total_input_tokens, usage.total_output_tokens);
       } finally { garde.recu(); }
     }
-    async function voixOpenAI(texte, surMorceau) {
-      const r = await fetch(`${OPENAI}/audio/speech`, {method: 'POST', headers: enteteOpenAI, signal: delai(signal, 45000), body: JSON.stringify({
-        model: M.voixSecours, voice: VOIX_OPENAI, input: texte, response_format: 'pcm', instructions: en ? 'Calm, clear and warm voice, in English.' : 'Voix posée, claire et chaleureuse, en français ; les termes anglais du jeu sont prononcés en anglais.'})});
-      if (!r.ok) throw await erreurOpenAI(r);
-      const sortie = decoupeur(surMorceau);
-      let octets = 0;
-      for await (const b of r.body) { octets += b.length; sortie(Buffer.from(b)); }
-      compterMinutes(M.voixSecours, octets / 48000);   // PCM 24 kHz, 16 bits, mono
-    }
   }
 
   // francais : message déjà prêt pour le joueur (le nom date d'avant l'anglais ; il est écrit dans la langue de la question).
@@ -998,7 +928,6 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
     if (e.francais) return e.message;
     if (e.name === 'TimeoutError') return T.tropLong;
     if (/fetch failed|ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN/i.test(`${e.message} ${e.cause?.code || ''}`)) return T.horsLigne;
-    if (/^OpenAI/.test(e.message)) return T.aucunService;
     return T.echec(e.message.slice(0, 200));
   }
 
@@ -1032,7 +961,7 @@ export function creerCopiloteJeu({root, env = {}, aide = null, conso = null, jou
     if (!aide) aideErreur = 'aide Windows absente';
     else try { ck3 = !!(await Promise.race([aide.etat(), attendre(3000).then(() => { throw new Error('Aide Windows sans réponse'); })])).ck3; } catch (e) { aideErreur = e?.message || 'Aide Windows indisponible'; }
     return {ck3, aide: aideErreur ? {ok: false, erreur: aideErreur} : {ok: true}, version: s?.version || null, extensions: s?.extensions || {possedees: [], manquantes: []}, joueur: joueur.prenom ? 'prenom' : 'generique',
-      cle: {gemini: !!cleGemini, openai: !!cleOpenAI}, voix: !!(cleGemini || cleOpenAI), modeles: {reponse: M.reponse, voix: `${M.voix} (${VOIX_GEMINI})`, secours: M.secours}};
+      cle: {gemini: !!cleGemini}, voix: !!cleGemini, modeles: {reponse: M.reponse, voix: `${M.voix} (${VOIX_GEMINI})`}};
   }
 
   function oublier() { epoqueMemoire++; historique = []; dernierEchange = 0; }

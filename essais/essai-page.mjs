@@ -40,9 +40,9 @@ const lignesJournal = [];
 const journal = {log: (...a) => lignesJournal.push(a.join(' ')), warn: (...a) => lignesJournal.push(a.join(' ')), error: (...a) => lignesJournal.push(a.join(' '))};
 
 const racine = await mkdtemp(path.join(os.tmpdir(), 'copilote-essai-'));
-await writeFile(path.join(racine, '.env'), `# essai\nGEMINI_API_KEY="${SECRET}"\nexport OPENAI_API_KEY='${SECRET}-2'\nAUTRE=a b # commentaire\n`);
+await writeFile(path.join(racine, '.env'), `# essai\nGEMINI_API_KEY="${SECRET}"\nexport AUTRE_CLE='${SECRET}-2'\nAUTRE=a b # commentaire\n`);
 const env = await lireEnv(racine);
-verifier('lecture du .env (guillemets, export, commentaire)', env.GEMINI_API_KEY === SECRET && env.OPENAI_API_KEY === SECRET + '-2' && env.AUTRE === 'a b');
+verifier('lecture du .env (guillemets, export, commentaire)', env.GEMINI_API_KEY === SECRET && env.AUTRE_CLE === SECRET + '-2' && env.AUTRE === 'a b');
 
 const garder = process.argv.includes('--garder');
 const s1 = await demarrerServeur({root: racine, journal, copilote: creerCopiloteFactice({delai: garder ? 40 : 5})});
@@ -323,7 +323,7 @@ const cache = path.join(PROJET, 'memoire', 'copilote-ck3');
 await mkdir(path.join(racine, 'memoire', 'copilote-ck3'), {recursive: true});
 for (const f of (await readdir(cache).catch(() => [])).filter(f => /^savoir-.*\.json$/.test(f))) await copyFile(path.join(cache, f), path.join(racine, 'memoire', 'copilote-ck3', f));
 const aideFermee = {async etat() { return {ck3: false}; }, async capturer() { throw Object.assign(new Error('CK3 n\'est pas lancé'), {code: 'pas-lance'}); }};
-const cerveau = creerCopiloteJeu({root: racine, env: {GEMINI_API_KEY: SECRET, OPENAI_API_KEY: SECRET + '-2'}, aide: aideFermee, journal});
+const cerveau = creerCopiloteJeu({root: racine, env: {GEMINI_API_KEY: SECRET}, aide: aideFermee, journal});
 const s4 = await demarrerServeur({root: racine, journal, copilote: cerveau});
 try {
   const erreurDe = s => s.evenements.find(e => e.type === 'erreur')?.message;
@@ -361,7 +361,7 @@ let pannesAide = 0;
 const aidePanne = {async etat() { return {ck3: true}; }, async capturer() {
   throw ++pannesAide % 2 ? Object.assign(new Error('Aide Windows : InvalidOperationException : essai'), {code: 'interne'}) : new Error('Aide Windows : réponse perdue');
 }};
-const s6 = await demarrerServeur({root: racine, journal, copilote: creerCopiloteJeu({root: racine, env: {GEMINI_API_KEY: SECRET, OPENAI_API_KEY: SECRET + '-2'}, aide: aidePanne, journal})});
+const s6 = await demarrerServeur({root: racine, journal, copilote: creerCopiloteJeu({root: racine, env: {GEMINI_API_KEY: SECRET}, aide: aidePanne, journal})});
 try {
   const capturer = async l => JSON.parse((await requete(s6.port, {chemin: `/api/jeu/capturer${l ? `?langue=${l}` : ''}`, methode: 'POST'})).corps);
   const [interneEn, perdueEn, interneFr] = [await capturer('en'), await capturer('en'), await capturer()];
